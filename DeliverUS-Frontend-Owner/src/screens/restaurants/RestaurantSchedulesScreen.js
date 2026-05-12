@@ -16,6 +16,7 @@ import scheduleIcon from '../../../assets/schedule.png'
 export default function RestaurantSchedulesScreen ({ navigation, route }) {
   const { loggedInUser } = useContext(AuthorizationContext)
   const [schedules, setSchedules] = useState([])
+  const [scheduleToBeDeleted, setScheduleToBeDeleted] = useState(null)
 
   useEffect(() => {
     if (loggedInUser) {
@@ -31,7 +32,56 @@ export default function RestaurantSchedulesScreen ({ navigation, route }) {
         imageUri={scheduleIcon}
         title={item.name}
       >
-        { /* TODO: mostrar los datos del horario */}
+        <TextSemiBold>Start Time: <TextRegular textStyle={{ color: GlobalStyles.brandGreen }}>{item.startTime}</TextRegular></TextSemiBold>
+        <TextSemiBold>End Time: <TextRegular textStyle={{ color: GlobalStyles.brandPrimary }}>{item.endTime}</TextRegular></TextSemiBold>
+      <View>
+          <TextSemiBold textStyle={[
+            styles.productsAssociatedText,
+            {
+              color:
+        item.products.length === 0
+          ? 'red'
+          : GlobalStyles.brandSecondary
+            }
+          ]}> {item.products ? item.products.length : 0} products associated</TextSemiBold>
+                </View>
+      <View style={styles.actionButtonsContainer}>
+          <Pressable
+            onPress={() => navigation.navigate('EditScheduleScreen', { id: item.id })}
+            style={({ pressed }) => [
+              {
+                backgroundColor: pressed
+                  ? GlobalStyles.brandBlueTap
+                  : GlobalStyles.brandBlue
+              },
+              styles.actionButton
+            ]}>
+            <View style={[{ flex: 1, flexDirection: 'row', justifyContent: 'center' }]}>
+              <MaterialCommunityIcons name='pencil' color={'white'} size={20}/>
+              <TextRegular textStyle={styles.text}>
+                Edit
+              </TextRegular>
+            </View>
+          </Pressable>
+
+          <Pressable
+            onPress={() => { setScheduleToBeDeleted(item) }}
+            style={({ pressed }) => [
+              {
+                backgroundColor: pressed
+                  ? GlobalStyles.brandPrimaryTap
+                  : GlobalStyles.brandPrimary
+              },
+              styles.actionButton
+            ]}>
+            <View style={[{ flex: 1, flexDirection: 'row', justifyContent: 'center' }]}>
+              <MaterialCommunityIcons name='delete' color={'white'} size={20}/>
+              <TextRegular textStyle={styles.text}>
+                Delete
+              </TextRegular>
+            </View>
+          </Pressable>
+        </View>
       </ImageCard>
     )
   }
@@ -72,22 +122,63 @@ export default function RestaurantSchedulesScreen ({ navigation, route }) {
   }
 
   const fetchSchedules = async () => {
-
+    try {
+      const fetchedSchedules = await getRestaurantSchedules(route.params.id)
+      setSchedules(fetchedSchedules)
+    } catch (error) {
+      showMessage({
+        message: `There was an error while retrieving restaurant schedules (id ${route.params.id}). ${error}`,
+        type: 'error',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
+    }
   }
 
-  const remove = async (schedule) => {
+  const removeScheduleHandler = async (schedule) => {
+    try {
+      await removeSchedule(schedule.restaurantId, schedule.id)
+      await fetchSchedules()
+      setScheduleToBeDeleted(null)
+      showMessage({
+        message: `Schedule ${schedule.id} succesfully removed`,
+        type: 'success',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
 
+      navigation.navigate('RestaurantDetailScreen', {
+        id: schedule.restaurantId
+      })
+    } catch (error) {
+      console.log(error)
+      setScheduleToBeDeleted(null)
+      showMessage({
+        message: `Schedule ${schedule.id} could not be removed.`,
+        type: 'error',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
+    }
   }
 
   return (
-    <FlatList
-      style={styles.container}
-      data={schedules}
-      renderItem={renderSchedule}
-      keyExtractor={item => item.id.toString()}
-      ListHeaderComponent={renderHeader}
-      ListEmptyComponent={renderEmptySchedulesList}
-    />
+    <>
+      <FlatList
+        style={styles.container}
+        data={schedules}
+        renderItem={renderSchedule}
+        keyExtractor={item => item.id.toString()}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmptySchedulesList}
+      />
+       <DeleteModal
+            isVisible={scheduleToBeDeleted !== null}
+            onCancel={() => setScheduleToBeDeleted(null)}
+            onConfirm={() => removeScheduleHandler(scheduleToBeDeleted)}>
+              <TextRegular>The schedules of this restaurant will be deleted as well</TextRegular>
+              </DeleteModal>
+    </>
   )
 }
 
@@ -131,7 +222,6 @@ const styles = StyleSheet.create({
     padding: 50
   },
   productsAssociatedText: {
-    textAlign: 'right',
-    color: GlobalStyles.brandSecondary
+    textAlign: 'right'
   }
 })

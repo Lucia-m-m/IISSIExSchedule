@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { StyleSheet, View, FlatList, ImageBackground, Image, Pressable } from 'react-native'
 import { showMessage } from 'react-native-flash-message'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { getDetail } from '../../api/RestaurantEndpoints'
+import { getDetail, getRestaurantSchedules } from '../../api/RestaurantEndpoints'
 import { remove } from '../../api/ProductEndpoints'
 import ImageCard from '../../components/ImageCard'
 import TextRegular from '../../components/TextRegular'
@@ -16,7 +16,6 @@ import { API_BASE_URL } from '@env'
 export default function RestaurantDetailScreen ({ navigation, route }) {
   const [restaurant, setRestaurant] = useState({})
   const [productToBeDeleted, setProductToBeDeleted] = useState(null)
-
   useEffect(() => {
     fetchRestaurantDetail()
   }, [route])
@@ -80,11 +79,25 @@ export default function RestaurantDetailScreen ({ navigation, route }) {
         title={item.name}
       >
         <TextRegular numberOfLines={2}>{item.description}</TextRegular>
-        <TextSemiBold textStyle={styles.price}>{item.price.toFixed(2)}€</TextSemiBold>
-        {!item.availability &&
-          <TextRegular textStyle={styles.availability }>Not available</TextRegular>
-        }
-         <View style={styles.actionButtonsContainer}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {item.schedule
+              ? <>
+                  <MaterialCommunityIcons name="timetable" size={18} color={GlobalStyles.brandGreen} />
+                  <TextRegular textStyle={{ color: GlobalStyles.brandGreen }}>{item.schedule.startTime} - {item.schedule.endTime}</TextRegular>
+              </>
+              : <>
+                <MaterialCommunityIcons name="timetable" size={18} color={GlobalStyles.brandPrimary} />
+                <TextRegular textStyle={{ color: GlobalStyles.brandPrimary }}>Not scheduled</TextRegular>
+              </>
+            }
+          </View>
+          <View>
+            {!item.availability &&
+              <TextRegular textStyle={styles.availability}>Not available</TextRegular>
+            }
+          </View>
+        </View><View style={styles.actionButtonsContainer}>
           <Pressable
             onPress={() => navigation.navigate('EditProductScreen', { id: item.id })
             }
